@@ -9,12 +9,22 @@
 import UIKit
 
 class ViewController: UIViewController {
-
+    var simpleBluetoothIO: SimpleBluetoothIO!
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view.
+        
+        print("something is happening")
+        
+        simpleBluetoothIO = SimpleBluetoothIO(serviceUUID: "4fafc201-1fb5-459e-8fcc-c5c9c331914b", delegate: self)
     }
 
 
+}
+
+extension ViewController: SimpleBluetoothIODelegate {
+    func simpleBluetoothIO(simpleBluetoothIO: SimpleBluetoothIO, didReceiveValue value: String) {
+        print("got value")
+        print(value)
+    }
 }
 
