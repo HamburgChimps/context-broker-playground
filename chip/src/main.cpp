@@ -1,45 +1,76 @@
-/*
-    Based on Neil Kolban example for IDF:
-   https://github.com/nkolban/esp32-snippets/blob/master/cpp_utils/tests/BLE%20Tests/SampleServer.cpp
-    Ported to Arduino ESP32 by Evandro Copercini
-    updates by chegewara
-*/
+// Blatantly copied from
+// https://platformio.org/lib/show/1841/ESP32%20BLE%20Arduino
 #include <Arduino.h>
+#include <BLE2902.h>
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
 
-// See the following for generating UUIDs:
-// https://www.uuidgenerator.net/
+BLEServer* pServer = NULL;
+BLECharacteristic* pCharacteristic = NULL;
+bool deviceConnected = false;
+bool oldDeviceConnected = false;
+uint32_t value = 0;
 
-#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+#define SERVICE_UUID "e5d9b3c0-cce6-11e9-a5c0-2a2ae2dbcce4"
+#define CHARACTERISTIC_UUID "e5d9b640-cce6-11e9-a5c0-2a2ae2dbcce4"
+
+class CurrywurstCallbacks : public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) {
+        deviceConnected = true;
+        BLEDevice::startAdvertising();
+    };
+
+    void onDisconnect(BLEServer* pServer) { deviceConnected = false; }
+};
 
 void setup() {
     Serial.begin(9600);
-    Serial.println("Starting BLE work!");
 
-    BLEDevice::init("Currywurst Stand");
-    BLEServer *pServer = BLEDevice::createServer();
-    BLEService *pService = pServer->createService(SERVICE_UUID);
-    BLECharacteristic *pCharacteristic = pService->createCharacteristic(
-        CHARACTERISTIC_UUID,
-        BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+    // Create the BLE Device
+    BLEDevice::init("ESP32");
 
-    pCharacteristic->setValue("Some Sensor Value");
+    // Create the BLE Server
+    pServer = BLEDevice::createServer();
+    pServer->setCallbacks(new CurrywurstCallbacks());
+
+    // Create the BLE Service
+    BLEService* pService = pServer->createService(SERVICE_UUID);
+
+    // Create a BLE Characteristic
+    pCharacteristic = pService->createCharacteristic(
+        CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ |
+                                 BLECharacteristic::PROPERTY_WRITE |
+                                 BLECharacteristic::PROPERTY_NOTIFY |
+                                 BLECharacteristic::PROPERTY_INDICATE);
+
+    pCharacteristic->addDescriptor(new BLE2902());
+
     pService->start();
-    BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+
+    BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
     pAdvertising->addServiceUUID(SERVICE_UUID);
-    pAdvertising->setScanResponse(true);
-    pAdvertising->setMinPreferred(
-        0x06);  // functions that help with iPhone connections issue
-    pAdvertising->setMinPreferred(0x12);
+    pAdvertising->setScanResponse(false);
+    pAdvertising->setMinPreferred(0x0);
     BLEDevice::startAdvertising();
-    Serial.println(
-        "Characteristic defined! Now you can read it in your phone!");
+    Serial.println("Waiting for a connection to notify yo!");
 }
 
 void loop() {
-    // put your main code here, to run repeatedly:
-    delay(2000);
+    if (deviceConnected) {
+        pCharacteristic->setValue((uint8_t*)&value, 4);
+        pCharacteristic->notify();
+        value++;
+        delay(10);
+    }
+    if (!deviceConnected && oldDeviceConnected) {
+        delay(500);
+        pServer->startAdvertising();
+        Serial.println("start advertising");
+        oldDeviceConnected = deviceConnected;
+    }
+
+    if (deviceConnected && !oldDeviceConnected) {
+        oldDeviceConnected = deviceConnected;
+    }
 }
