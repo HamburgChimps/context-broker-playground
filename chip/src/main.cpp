@@ -27,17 +27,13 @@ class CurrywurstCallbacks : public BLEServerCallbacks {
 void setup() {
     Serial.begin(9600);
 
-    // Create the BLE Device
-    BLEDevice::init("ESP32");
+    BLEDevice::init("Currywurst Stand Ab Initio");
 
-    // Create the BLE Server
     pServer = BLEDevice::createServer();
     pServer->setCallbacks(new CurrywurstCallbacks());
 
-    // Create the BLE Service
     BLEService* pService = pServer->createService(SERVICE_UUID);
 
-    // Create a BLE Characteristic
     pCharacteristic = pService->createCharacteristic(
         CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ |
                                  BLECharacteristic::PROPERTY_WRITE |
