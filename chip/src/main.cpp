@@ -54,7 +54,7 @@ void setup() {
 
 void loop() {
     if (deviceConnected) {
-        pCharacteristic->setValue((uint8_t*)&value, 4);
+        pCharacteristic->setValue("Some Sensor Value");
         pCharacteristic->notify();
         value++;
         delay(10);
